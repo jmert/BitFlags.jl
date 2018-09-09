@@ -1,0 +1,14 @@
+name = "BitFlags"
+uuid = "96a544c6-b366-11e8-2c8b-a90871248d54"
+authors = ["Justin Willmert <justin@jdjlab.com>"]
+version = "0.1.0"
+
+[deps]
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+
+[extras]
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Serialization", "Test"]
