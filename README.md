@@ -2,15 +2,16 @@
 
 [![Build Status](https://travis-ci.org/jmert/BitFlags.jl.svg?branch=master)](https://travis-ci.org/jmert/BitFlags.jl)
 
-`BitFlag.jl` provides an `Enum`-like type for bit flags option values. The main
+`BitFlag.jl` provides an `Enum`-like type for bit flag option values. The main
 motivations are:
 
 1. Members have implicit numbering with incrementing powers of 2.
-2. Binary OR (`|`) and AND (`&`) operations are supported among members. Values
-   are pretty-printed with constituents
+2. Binary OR (`|`) and AND (`&`) operations are supported among members.
+3. Values are pretty-printed by name, with OR chains when multiple bits are
+   set.
 
 This implementation is a relatively minor modification of
-[Julia](https://julialang.org/)'s `Enum` type.
+[Julia](https://julialang.org/)'s `Enum` type implementation.
 
 ## Basic usage
 
@@ -31,7 +32,7 @@ end
 Automatic numbering starts at 1, but an initial flag value may be explicitly
 set to the value of zero. If no explicit zero-valued member is given, then 0 is
 not a valid value for the `BitFlag`. In the following example, we build an
-8-bit `BitFlag` with no value for bit 3.
+8-bit `BitFlag` with no value for bit 3 (value of 4).
 ```julia
 julia> @bitflag MyStyle::UInt8 S_NONE=0 S_BOLD S_ITALIC S_LARGE=8
 ```
@@ -49,10 +50,13 @@ of values:
 julia> Int(S_BOLD)
 1
 
+julia> Integer(S_ITALIC)    # Abstract Integer uses native UInt8 type
+0x02
+
 julia> MyStyle(9)
 (S_BOLD | S_LARGE)::MyStyle = 0x09
 
-julia> MyStyle(4)
+julia> MyStyle(4)    # MyStyle does not have a flag at 4
 ERROR: ArgumentError: invalid value for BitFlag MyStyle: 4
 Stacktrace:
 ...
@@ -86,7 +90,7 @@ S_BOLD|S_LARGE
 ```julia
 julia> io = IOBuffer();
 
-julia> write(io, S_BOLD | S_LARGE);
+julia> write(io, UInt8(9));
 
 julia> seekstart(io);
 
