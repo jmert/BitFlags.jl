@@ -7,14 +7,68 @@ module BitFlags
 import Core.Intrinsics.bitcast
 export BitFlag, @bitflag
 
-function basetype end
+function namemap end
+function haszero end
 
 abstract type BitFlag{T<:Integer} end
+
+basetype(::Type{<:BitFlag{T}}) where {T<:Integer} = T
 
 (::Type{T})(x::BitFlag{T2}) where {T<:Integer,T2<:Unsigned} = T(bitcast(T2, x))::T
 Base.cconvert(::Type{T}, x::BitFlag{T2}) where {T<:Unsigned,T2<:Unsigned} = T(x)
 Base.write(io::IO, x::BitFlag{T}) where {T<:Unsigned} = write(io, T(x))
-Base.read(io::IO, ::Type{T}) where {T<:BitFlag} = T(read(io, BitFlags.basetype(T)))
+Base.read(io::IO, ::Type{T}) where {T<:BitFlag} = T(read(io, basetype(T)))
+
+Base.isless(x::T, y::T) where {T<:BitFlag} = isless(basetype(T)(x), basetype(T)(y))
+Base.:|(x::T, y::T) where {T<:BitFlag} = T(Integer(x) | Integer(y))
+Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
+
+function Base.print(io::IO, x::T) where T<:BitFlag
+    compact = get(io, :compact, false)
+    xi = Integer(x)
+    multi = (haszero(T) && !iszero(xi)) && !compact && !ispow2(xi)
+    first = true
+    sep = compact ? "|" : " | "
+    for (i, sym) in Iterators.reverse(namemap(T))
+        if haszero(T) && iszero(i) && iszero(xi)
+            print(io, sym)
+            break
+        end
+        if !iszero(i & xi)
+            if first
+                multi && print(io, "(")
+                first = false
+            else
+                print(io, sep)
+            end
+            print(io, sym)
+        end
+    end
+    multi && print(io, ")")
+    nothing
+end
+function Base.show(io::IO, x::BitFlag)
+    if get(io, :compact, false)
+        print(io, x)
+    else
+        print(io, x, "::")
+        show(IOContext(io, :compact => true), typeof(x))
+        print(io, " = ")
+        show(io, Integer(x))
+    end
+end
+function Base.show(io::IO, t::Type{BitFlag})
+    Base.show_datatype(io, t)
+end
+function Base.show(io::IO, ::MIME"text/plain", t::Type{<:BitFlag})
+    print(io, "BitFlag ")
+    Base.show_datatype(io, t)
+    print(io, ":")
+    for x in instances(t)
+        print(io, "\n", Symbol(x), " = ")
+        show(io, Integer(x))
+    end
+end
 
 # generate code to test whether expr is in the given set of values
 function membershiptest(expr, zmask)
@@ -86,7 +140,9 @@ macro bitflag(T, syms...)
     elseif !isa(T, Symbol)
         throw(ArgumentError("invalid type expression for bit flag $T"))
     end
-    vals = Vector{Tuple{Symbol,Unsigned}}()
+    values = basetype[]
+    seen = Set{Symbol}()
+    namemap = Vector{Tuple{basetype,Symbol}}()
     lo = hi = zero(basetype)
     maskzero, maskother = false, zero(basetype)
     i = oneunit(basetype)
@@ -120,18 +176,23 @@ macro bitflag(T, syms...)
         end
         if !Base.isidentifier(s)
             throw(ArgumentError("invalid name for BitFlag $typename; "
-                                * "\"$s\" is not a valid identifier."))
+                                * "\"$s\" is not a valid identifier"))
         end
         if (iszero(i) && maskzero) || (i & maskother) != 0
             throw(ArgumentError("values for BitFlag $typename are not unique"))
         end
-        push!(vals, (s,i))
+        push!(namemap, (i,s))
+        push!(values, i)
+        if s in seen
+            throw(ArgumentError("name \"$s\" in BitFlag $typename is not unique"))
+        end
+        push!(seen, s)
         if iszero(i)
             maskzero = true
         else
             maskother |= i
         end
-        if length(vals) == 1
+        if length(values) == 1
             lo = hi = i
         else
             lo = min(lo, i)
@@ -139,7 +200,9 @@ macro bitflag(T, syms...)
         end
         i = iszero(i) ? oneunit(i) : two*i
     end
-    values = basetype[i[2] for i in vals]
+    order = sortperm([v[1] for v in namemap])
+    permute!(namemap, order)
+    permute!(values, order)
     blk = quote
         # bitflag definition
         Base.@__doc__(primitive type $(esc(typename)) <: BitFlag{$(basetype)} $(sizeof(basetype) * 8) end)
@@ -148,67 +211,16 @@ macro bitflag(T, syms...)
                 bitflag_argument_error($(Expr(:quote, typename)), x)
             return bitcast($(esc(typename)), convert($(basetype), x))
         end
-        BitFlags.basetype(::Type{$(esc(typename))}) = $(esc(basetype))
+        BitFlags.namemap(::Type{$(esc(typename))}) = $(esc(namemap))
+        BitFlags.haszero(::Type{$(esc(typename))}) = $(esc(maskzero))
         Base.typemin(x::Type{$(esc(typename))}) = $(esc(typename))($lo)
         Base.typemax(x::Type{$(esc(typename))}) = $(esc(typename))($hi)
-        Base.isless(x::$(esc(typename)), y::$(esc(typename))) =
-                isless($basetype(x), $basetype(y))
-        Base.:|(x::$(esc(typename)), y::$(esc(typename))) =
-                $(esc(typename))($basetype(x) | $basetype(y))
-        Base.:&(x::$(esc(typename)), y::$(esc(typename))) =
-                $(esc(typename))($basetype(x) & $basetype(y))
-        let insts = ntuple(i->$(esc(typename))($values[i]), $(length(vals)))
+        let insts = ntuple(i->$(esc(typename))($values[i]), $(length(values)))
             Base.instances(::Type{$(esc(typename))}) = insts
-        end
-        function Base.print(io::IO, x::$(esc(typename)))
-            compact = get(io, :compact, false)
-            xi = $(basetype)(x)
-            multi = ($maskzero && !iszero(xi)) && !compact && !ispow2(xi)
-            first = true
-            sep = compact ? "|" : " | "
-            for (sym, i) in $vals
-                if $maskzero && iszero(i) && iszero(xi)
-                    print(io, sym)
-                    break
-                end
-                if !iszero(i & xi)
-                    if first
-                        multi && print(io, "(")
-                        first = false
-                    else
-                        print(io, sep)
-                    end
-                    print(io, sym)
-                end
-            end
-            multi && print(io, ")")
-            nothing
-        end
-        function Base.show(io::IO, x::$(esc(typename)))
-            if get(io, :compact, false)
-                print(io, x)
-            else
-                print(io, x, "::")
-                show(IOContext(io, :compact => true), typeof(x))
-                print(io, " = ")
-                show(io, $basetype(x))
-            end
-        end
-        function Base.show(io::IO, t::Type{$(esc(typename))})
-            Base.show_datatype(io, t)
-        end
-        function Base.show(io::IO, ::MIME"text/plain", t::Type{$(esc(typename))})
-            print(io, "BitFlag ")
-            Base.show_datatype(io, t)
-            print(io, ":")
-            for (sym, i) in $vals
-                print(io, "\n", sym, " = ")
-                show(io, i)
-            end
         end
     end
     if isa(typename, Symbol)
-        for (sym,i) in vals
+        for (i, sym) in namemap
             push!(blk.args, :(const $(esc(sym)) = $(esc(typename))($i)))
         end
     end

@@ -153,7 +153,7 @@ end
 #end
 
 #@testset "String representations" begin
-    @bitflag FilePerms::UInt8 NONE=0 EXEC WRITE READ
+    @bitflag FilePerms::UInt8 NONE=0 READ=4 WRITE=2 EXEC=1
     @test string(FilePerms) == "FilePerms"
     @test string(NONE) == "NONE"
     @test repr("text/plain", FilePerms) ==
@@ -163,14 +163,14 @@ end
            WRITE = 0x02
            READ = 0x04"""
     @test repr(EXEC) == "EXEC::FilePerms = 0x01"
-    @test repr(EXEC | READ) == "(EXEC | READ)::FilePerms = 0x05"
+    @test repr(EXEC | READ) == "(READ | EXEC)::FilePerms = 0x05"
     @test repr(NONE | READ) == "READ::FilePerms = 0x04"
 
     let io = IOBuffer(), ioc = IOContext(io, :compact => true)
         show(ioc, NONE)
         @test String(take!(io)) == "NONE"
         show(ioc, EXEC | READ)
-        @test String(take!(io)) == "EXEC|READ"
+        @test String(take!(io)) == "READ|EXEC"
     end
 #end
 

@@ -39,7 +39,7 @@ julia> @bitflag MyStyle::UInt8 S_NONE=0 S_BOLD S_ITALIC S_LARGE=8
 Combinations can be made using standard binary operations:
 ```julia
 julia> S_BOLD | S_LARGE
-(S_BOLD | S_LARGE)::MyStyle = 0x09
+(S_LARGE | S_BOLD)::MyStyle = 0x09
 
 julia> ans & S_ITALIC
 S_NONE::MyStyle = 0x00
@@ -54,7 +54,7 @@ julia> Integer(S_ITALIC)    # Abstract Integer uses native UInt8 type
 0x02
 
 julia> MyStyle(9)
-(S_BOLD | S_LARGE)::MyStyle = 0x09
+(S_LARGE | S_BOLD)::MyStyle = 0x09
 
 julia> MyStyle(4)    # MyStyle does not have a flag at 4
 ERROR: ArgumentError: invalid value for BitFlag MyStyle: 4
@@ -71,17 +71,17 @@ julia> S_BOLD
 S_BOLD::MyStyle = 0x00000001
 
 julia> S_BOLD | S_LARGE
-(S_BOLD | S_LARGE)::MyStyle = 0x00000005
+(S_LARGE | S_BOLD)::MyStyle = 0x00000005
 ```
 In a compact context (such as in multi-dimensional arrays), the pretty-printing
 takes on a shorter form:
 ```julia
 julia> [S_NONE (S_BOLD | S_LARGE)]
 1×2 Array{MyStyle,2}:
- S_NONE  S_BOLD|S_LARGE
+ S_NONE  S_LARGE|S_BOLD
 
 julia> show(IOContext(stdout, :compact => true), S_BOLD | S_LARGE)
-S_BOLD|S_LARGE
+S_LARGE|S_BOLD
 ```
 
 ## Input/Output
@@ -95,5 +95,5 @@ julia> write(io, UInt8(9));
 julia> seekstart(io);
 
 julia> read(io, MyStyle)
-(S_BOLD | S_LARGE)::MyStyle = 0x09
+(S_LARGE | S_BOLD)::MyStyle = 0x09
 ```
