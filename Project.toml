@@ -1,7 +1,7 @@
 name = "BitFlags"
-uuid = "96a544c6-b366-11e8-2c8b-a90871248d54"
+uuid = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
 authors = ["Justin Willmert <justin@jdjlab.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 
