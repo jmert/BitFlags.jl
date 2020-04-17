@@ -3,8 +3,6 @@ uuid = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
 authors = ["Justin Willmert <justin@jdjlab.com>"]
 version = "0.1.1"
 
-[deps]
-
 [extras]
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
