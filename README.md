@@ -1,6 +1,6 @@
 # BitFlags.jl
 
-[![Build Status](https://travis-ci.org/jmert/BitFlags.jl.svg?branch=master)](https://travis-ci.org/jmert/BitFlags.jl)
+[![Build Status](https://travis-ci.com/jmert/BitFlags.jl.svg?branch=master)](https://travis-ci.com/jmert/BitFlags.jl)
 
 `BitFlag.jl` provides an `Enum`-like type for bit flag option values. The main
 motivations are:
