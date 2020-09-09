@@ -26,7 +26,7 @@ Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 function Base.print(io::IO, x::T) where T<:BitFlag
     compact = get(io, :compact, false)::Bool
     xi = Integer(x)
-    multi = (haszero(T) && !iszero(xi)) && !compact && !ispow2(xi)
+    multi = (haszero(T) ? !iszero(xi) : true) && !compact && !ispow2(xi)
     first = true
     sep = compact ? "|" : " | "
     for (i, sym) in Iterators.reverse(namemap(T))
