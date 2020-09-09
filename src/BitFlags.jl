@@ -24,7 +24,7 @@ Base.:|(x::T, y::T) where {T<:BitFlag} = T(Integer(x) | Integer(y))
 Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 
 function Base.print(io::IO, x::T) where T<:BitFlag
-    compact = get(io, :compact, false)
+    compact = get(io, :compact, false)::Bool
     xi = Integer(x)
     multi = (haszero(T) && !iszero(xi)) && !compact && !ispow2(xi)
     first = true
@@ -48,7 +48,7 @@ function Base.print(io::IO, x::T) where T<:BitFlag
     nothing
 end
 function Base.show(io::IO, x::BitFlag)
-    if get(io, :compact, false)
+    if get(io, :compact, false)::Bool
         print(io, x)
     else
         print(io, x, "::")
