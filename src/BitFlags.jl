@@ -52,13 +52,12 @@ function Base.show(io::IO, x::BitFlag)
         print(io, x)
     else
         print(io, x, "::")
-        show(IOContext(io, :compact => true), typeof(x))
+        # explicitly setting :compact => false prints the type with its
+        # "contextual path", i.e. MyFlag (for Main.MyFlag) or Main.SubModule.OtherFlags
+        show(IOContext(io, :compact => false), typeof(x))
         print(io, " = ")
         show(io, Integer(x))
     end
-end
-function Base.show(io::IO, t::Type{BitFlag})
-    Base.show_datatype(io, t)
 end
 function Base.show(io::IO, ::MIME"text/plain", t::Type{<:BitFlag})
     print(io, "BitFlag ")

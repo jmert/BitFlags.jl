@@ -154,29 +154,42 @@ end
 
 #@testset "String representations" begin
     @bitflag FilePerms::UInt8 NONE=0 READ=4 WRITE=2 EXEC=1
-    @bitflag Bits::UInt8 BIT_ONE BIT_TWO BIT_FOUR BIT_EIGHT
+    # In submodule and not imported to test prefix printing
+    module SubModule
+        using ..BitFlags
+        @bitflag Bits::UInt8 BIT_ONE BIT_TWO BIT_FOUR BIT_EIGHT # No-zero case
+    end
+
     @test string(FilePerms) == "FilePerms"
+    @test string(SubModule.Bits) == "Main.SubModule.Bits"
     @test string(NONE) == "NONE"
+    @test string(SubModule.BIT_ONE) == "BIT_ONE"
     @test repr("text/plain", FilePerms) ==
         """BitFlag $(string(FilePerms)):
            NONE = 0x00
            EXEC = 0x01
            WRITE = 0x02
            READ = 0x04"""
+    @test repr("text/plain", SubModule.Bits) ==
+        """BitFlag Main.SubModule.Bits:
+           BIT_ONE = 0x01
+           BIT_TWO = 0x02
+           BIT_FOUR = 0x04
+           BIT_EIGHT = 0x08"""
     @test repr(EXEC) == "EXEC::FilePerms = 0x01"
-    @test repr(BIT_ONE) == "BIT_ONE::Bits = 0x01"
+    @test repr(SubModule.BIT_ONE) == "BIT_ONE::Main.SubModule.Bits = 0x01"
     @test repr(EXEC | READ) == "(READ | EXEC)::FilePerms = 0x05"
-    @test repr(BIT_ONE | BIT_EIGHT) == "(BIT_EIGHT | BIT_ONE)::Bits = 0x09"
+    @test repr(SubModule.BIT_ONE | SubModule.BIT_EIGHT) == "(BIT_EIGHT | BIT_ONE)::Main.SubModule.Bits = 0x09"
     @test repr(NONE | READ) == "READ::FilePerms = 0x04"
 
     let io = IOBuffer(), ioc = IOContext(io, :compact => true)
         show(ioc, NONE)
         @test String(take!(io)) == "NONE"
-        show(ioc, BIT_ONE)
+        show(ioc, SubModule.BIT_ONE)
         @test String(take!(io)) == "BIT_ONE"
         show(ioc, EXEC | READ)
         @test String(take!(io)) == "READ|EXEC"
-        show(ioc, BIT_ONE | BIT_EIGHT)
+        show(ioc, SubModule.BIT_ONE | SubModule.BIT_EIGHT)
         @test String(take!(io)) == "BIT_EIGHT|BIT_ONE"
     end
 #end
