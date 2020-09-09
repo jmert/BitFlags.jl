@@ -125,7 +125,7 @@ julia> instances(Items)
 (apple::Items = 0x00000001, fork::Items = 0x00000002, napkin::Items = 0x00000004)
 ```
 """
-macro bitflag(T, syms...)
+macro bitflag(T::Union{Symbol,Expr}, syms...)
     if isempty(syms)
         throw(ArgumentError("no arguments given for BitFlag $T"))
     end
@@ -141,7 +141,7 @@ macro bitflag(T, syms...)
     elseif !isa(T, Symbol)
         throw(ArgumentError("invalid type expression for bit flag $T"))
     end
-    values = basetype[]
+    values = Vector{basetype}()
     seen = Set{Symbol}()
     namemap = Vector{Tuple{basetype,Symbol}}()
     lo = hi = zero(basetype)
