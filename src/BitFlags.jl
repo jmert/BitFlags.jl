@@ -115,7 +115,8 @@ end
 
 `BaseType`, which defaults to [`UInt32`](@ref), must be a primitive subtype of `Unsigned`.
 Member values can be converted between the bit flag type and `BaseType`. `read` and `write`
-perform these conversions automatically.
+perform these conversions automatically. In case the bitflag is created with a non-default
+`BaseType`, `Integer(value1)` will return the integer `value1` with the type `BaseType`.
 
 To list all the instances of an bitflag use `instances`, e.g.
 
