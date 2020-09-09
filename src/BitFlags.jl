@@ -174,6 +174,7 @@ macro bitflag(T, syms...)
         else
             throw(ArgumentError(string("invalid argument for BitFlag ", typename, ": ", s)))
         end
+        s = s::Symbol
         if !Base.isidentifier(s)
             throw(ArgumentError("invalid name for BitFlag $typename; "
                                 * "\"$s\" is not a valid identifier"))
