@@ -182,7 +182,19 @@ end
     @test repr(SubModule.BIT_ONE | SubModule.BIT_EIGHT) == "(BIT_EIGHT | BIT_ONE)::Main.SubModule.Bits = 0x09"
     @test repr(NONE | READ) == "READ::FilePerms = 0x04"
 
-    let io = IOBuffer(), ioc = IOContext(io, :compact => true)
+    let io = IOBuffer(), ioc = IOContext(io, :compact => true, :module => Main)
+        show(io, MIME"text/plain"(), BitFlag)
+        @test String(take!(io)) == "BitFlag"
+        show(ioc, MIME"text/plain"(), BitFlag)
+        @test String(take!(io)) == "BitFlag"
+
+        # Explicit :compact => false required for consistency across Julia versions
+        iof = IOContext(io, :compact => false, :module => Main)
+        show(iof, MIME"text/plain"(), Union{FilePerms, SubModule.Bits})
+        @test String(take!(io)) == "Union{FilePerms, Main.SubModule.Bits}"
+        show(ioc, MIME"text/plain"(), Union{FilePerms, SubModule.Bits})
+        @test String(take!(io)) == "Union{FilePerms, Bits}"
+
         show(ioc, NONE)
         @test String(take!(io)) == "NONE"
         show(ioc, SubModule.BIT_ONE)

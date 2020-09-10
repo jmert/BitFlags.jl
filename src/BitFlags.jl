@@ -59,13 +59,17 @@ function Base.show(io::IO, x::BitFlag)
         show(io, Integer(x))
     end
 end
-function Base.show(io::IO, ::MIME"text/plain", t::Type{<:BitFlag})
-    print(io, "BitFlag ")
-    Base.show_datatype(io, t)
-    print(io, ":")
-    for x in instances(t)
-        print(io, "\n", Symbol(x), " = ")
-        show(io, Integer(x))
+function Base.show(io::IO, m::MIME"text/plain", t::Type{<:BitFlag})
+    if isconcretetype(t)
+        print(io, "BitFlag ")
+        Base.show_datatype(io, t)
+        print(io, ":")
+        for x in instances(t)
+            print(io, "\n", Symbol(x), " = ")
+            show(io, Integer(x))
+        end
+    else
+        invoke(show, Tuple{IO, typeof(m), Type}, io, m, t)
     end
 end
 
