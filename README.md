@@ -1,7 +1,7 @@
 # BitFlags.jl
 
 [![Build Status](https://github.com/jmert/BitFlags.jl/workflows/CI/badge.svg)](https://github.com/jmert/BitFlags.jl/actions)
-[![Coverage](https://codecov.io/gh/jmert/BigFlags.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jmert/BigFlags.jl)
+[![Coverage](https://codecov.io/gh/jmert/BitFlags.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jmert/BitFlags.jl)
 
 `BitFlag.jl` provides an `Enum`-like type for bit flag option values. The main
 motivations are:
