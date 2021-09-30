@@ -182,27 +182,37 @@ end
     @test repr(SubModule.BIT_ONE | SubModule.BIT_EIGHT) == "(BIT_EIGHT | BIT_ONE)::Main.SubModule.Bits = 0x09"
     @test repr(NONE | READ) == "READ::FilePerms = 0x04"
 
-    let io = IOBuffer(), ioc = IOContext(io, :compact => true, :module => Main)
-        show(io, MIME"text/plain"(), BitFlag)
-        @test String(take!(io)) == "BitFlag"
-        show(ioc, MIME"text/plain"(), BitFlag)
-        @test String(take!(io)) == "BitFlag"
-
-        # Explicit :compact => false required for consistency across Julia versions
+    let io = IOBuffer(),
+        ioc = IOContext(io, :compact => true, :module => Main),
         iof = IOContext(io, :compact => false, :module => Main)
-        show(iof, MIME"text/plain"(), Union{FilePerms, SubModule.Bits})
-        @test String(take!(io)) == "Union{FilePerms, Main.SubModule.Bits}"
-        show(ioc, MIME"text/plain"(), Union{FilePerms, SubModule.Bits})
-        @test String(take!(io)) == "Union{FilePerms, Bits}"
+        # Explicit :compact => false required for consistency across Julia versions
 
-        show(ioc, NONE)
-        @test String(take!(io)) == "NONE"
-        show(ioc, SubModule.BIT_ONE)
-        @test String(take!(io)) == "BIT_ONE"
-        show(ioc, EXEC | READ)
-        @test String(take!(io)) == "READ|EXEC"
-        show(ioc, SubModule.BIT_ONE | SubModule.BIT_EIGHT)
-        @test String(take!(io)) == "BIT_EIGHT|BIT_ONE"
+        stringf(x) = (show(iof, MIME"text/plain"(), x); String(take!(io)))
+        stringc(x) = (show(ioc, MIME"text/plain"(), x); String(take!(io)))
+
+        @test stringf(BitFlag) == "BitFlag"
+        @test stringc(BitFlag) == "BitFlag"
+
+        @test stringf(Union{FilePerms, SubModule.Bits}) == "Union{FilePerms, Main.SubModule.Bits}"
+        @test stringc(Union{FilePerms, SubModule.Bits}) == "Union{FilePerms, Bits}"
+
+        @test stringc(NONE) == "NONE"
+        @test stringc(SubModule.BIT_ONE) == "BIT_ONE"
+        @test stringc(EXEC | READ) == "READ|EXEC"
+        @test stringc(SubModule.BIT_ONE | SubModule.BIT_EIGHT) == "BIT_EIGHT|BIT_ONE"
+
+        # Handle exceptional cases where set bits are not in the allowed set
+        @test stringf(reinterpret(SubModule.Bits, 0x00)) == "reinterpret(Main.SubModule.Bits, 0x00)::Main.SubModule.Bits = 0x00"
+        @test stringc(reinterpret(SubModule.Bits, 0x00)) == "0x00"
+
+        @test stringf(reinterpret(SubModule.Bits, 0x11)) == "(BIT_ONE | reinterpret(Main.SubModule.Bits, 0x10))::Main.SubModule.Bits = 0x11"
+        @test stringc(reinterpret(SubModule.Bits, 0x11)) == "BIT_ONE|0x10"
+
+        @test stringf(reinterpret(FilePerms, 0x08)) == "reinterpret(FilePerms, 0x08)::FilePerms = 0x08"
+        @test stringc(reinterpret(FilePerms, 0x08)) == "0x08"
+
+        @test stringf(reinterpret(FilePerms, 0xff)) == "(READ | WRITE | EXEC | reinterpret(FilePerms, 0xf8))::FilePerms = 0xff"
+        @test stringc(reinterpret(FilePerms, 0xff)) == "READ|WRITE|EXEC|0xf8"
     end
 #end
 

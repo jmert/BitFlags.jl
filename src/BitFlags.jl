@@ -26,15 +26,28 @@ Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 function Base.print(io::IO, x::T) where T<:BitFlag
     compact = get(io, :compact, false)::Bool
     xi = Integer(x)
+
+    function _printnum(v)
+        if compact
+            show(io, v)
+        else
+            print(io, "reinterpret(")
+            show(IOContext(io, :compact => false), T)
+            print(io, ", ")
+            show(io, v)
+            print(io, ")")
+        end
+    end
+    # abnormal case where bitflag is all unset but 0 not permitted
+    if !haszero(T) && iszero(xi)
+        _printnum(xi)
+        return
+    end
     multi = (haszero(T) ? !iszero(xi) : true) && !compact && !ispow2(xi)
     first = true
     sep = compact ? "|" : " | "
     for (i, sym) in Iterators.reverse(namemap(T))
-        if haszero(T) && iszero(i) && iszero(xi)
-            print(io, sym)
-            break
-        end
-        if !iszero(i & xi)
+        if (first && iszero(i) && iszero(xi)) || !iszero(xi & i)
             if first
                 multi && print(io, "(")
                 first = false
@@ -42,7 +55,13 @@ function Base.print(io::IO, x::T) where T<:BitFlag
                 print(io, sep)
             end
             print(io, sym)
+            xi ⊻= i
         end
+    end
+    # abnormal case where set bits are not part of nominal set
+    if !iszero(xi)
+        !first && print(io, sep)
+        _printnum(xi)
     end
     multi && print(io, ")")
     nothing
