@@ -1,17 +1,28 @@
 name: CI
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - 'master'
+    tags: '*'
+    paths-ignore:
+      - 'README.md'
+      - '.github/workflows/**'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - '.github/workflows/**'
+
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
           - '1.0'     # earliest supported
-          - '1.5'     # latest release
+          - '1'       # latest release
           - 'nightly'
         os:
           - ubuntu-latest
