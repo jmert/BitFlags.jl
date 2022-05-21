@@ -62,6 +62,10 @@ end
     @test Flag1(7) & flag1a == flag1a
     @test flag1a < flag1b < flag1c
     @test flag1a | flag1b < flag1c
+
+    # Hashing
+    @test Int(flag2a) == Int(flag3a)    # same numerical value, but
+    @test hash(flag2a) != hash(flag3a)  # unique hashes as BitFlag
 #end
 
 #@testset "Type properties" begin

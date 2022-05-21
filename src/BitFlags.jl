@@ -239,6 +239,9 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
         BitFlags.haszero(::Type{$(esc(typename))}) = $(esc(maskzero))
         Base.typemin(x::Type{$(esc(typename))}) = $(esc(typename))($lo)
         Base.typemax(x::Type{$(esc(typename))}) = $(esc(typename))($hi)
+        let flag_hash = hash($(esc(typename)))
+            Base.hash(x::$(esc(typename)), h::UInt) = hash(flag_hash, hash(Integer(x), h))
+        end
         let insts = (Any[$(esc(typename))(v) for v in $(values)]...,)
             Base.instances(::Type{$(esc(typename))}) = insts
         end
