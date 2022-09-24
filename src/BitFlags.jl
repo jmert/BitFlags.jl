@@ -15,7 +15,7 @@ abstract type BitFlag{T<:Integer} end
 basetype(::Type{<:BitFlag{T}}) where {T<:Integer} = T
 
 (::Type{T})(x::BitFlag{T2}) where {T<:Integer,T2<:Unsigned} = T(bitcast(T2, x))::T
-Base.cconvert(::Type{T}, x::BitFlag{T2}) where {T<:Unsigned,T2<:Unsigned} = T(x)
+Base.cconvert(::Type{T}, x::BitFlag{T2}) where {T<:Unsigned,T2<:Unsigned} = T(x)::T
 Base.write(io::IO, x::BitFlag{T}) where {T<:Unsigned} = write(io, T(x))
 Base.read(io::IO, ::Type{T}) where {T<:BitFlag} = T(read(io, basetype(T)))
 
