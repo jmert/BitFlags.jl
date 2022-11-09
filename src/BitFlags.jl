@@ -103,7 +103,17 @@ function membershiptest(expr, zmask)
     end
 end
 
-@noinline bitflag_argument_error(typename, x) = throw(ArgumentError(string("invalid value for BitFlag $(typename): $x")))
+@noinline function _argument_error(typename, x)
+    throw(ArgumentError("invalid value for BitFlag $typename: $x"))
+end
+
+@noinline function _throw_error(typename, s, msg = nothing)
+    errmsg = "invalid argument for BitFlag $typename: $s"
+    if msg !== nothing
+        errmsg *= "; " * msg
+    end
+    throw(ArgumentError(errmsg))
+end
 
 """
     @bitflag BitFlagName[::BaseType] value1[=x] value2[=y]
@@ -157,11 +167,10 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
         typename = T.args[1]
         basetype = Core.eval(__module__, T.args[2])
         if !isa(basetype, DataType) || !(basetype <: Unsigned) || !isbitstype(basetype)
-            throw(ArgumentError("invalid base type for BitFlag $typename, ::$basetype; "
-                                * "base type must be an unsigned integer primitive type"))
+            _throw_error(typename, T, "base type must be a bitstype unsigned integer")
         end
     elseif !isa(T, Symbol)
-        throw(ArgumentError("invalid type expression for bit flag $T"))
+        _throw_error(typename, T)
     end
     values = Vector{basetype}()
     seen = Set{Symbol}()
@@ -180,37 +189,35 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
             if (i == typemin(basetype)) && (maskother & typemax(basetype) != 0)
                 throw(ArgumentError("overflow in value \"$s\" of BitFlag $typename"))
             end
+            sym = s
         elseif isa(s, Expr) &&
                (s.head === :(=) || s.head === :kw) &&
                length(s.args) == 2 && isa(s.args[1], Symbol)
             i = Core.eval(__module__, s.args[2]) # allow exprs, e.g. uint128"1"
             if !isa(i, Integer)
-                throw(ArgumentError("invalid value for BitFlag $typename, $s; " *
-                                    "values must be unsigned integers"))
+                _throw_error(typename, s, "values must be unsigned integers")
             end
             if !iszero(i) && !ispow2(i)
-                throw(ArgumentError("invalid value for BitFlag $typename, $s; " *
-                                    "values must be a positive power of 2"))
+                _throw_error(typename, s, "values must be a positive power of 2")
             end
             i = convert(basetype, i)
-            s = s.args[1]
+            sym = s.args[1]
         else
-            throw(ArgumentError(string("invalid argument for BitFlag ", typename, ": ", s)))
+            _throw_error(typename, s)
         end
-        s = s::Symbol
-        if !Base.isidentifier(s)
-            throw(ArgumentError("invalid name for BitFlag $typename; "
-                                * "\"$s\" is not a valid identifier"))
+        sym = sym::Symbol
+        if !Base.isidentifier(sym)
+            _throw_error(typename, s, "not a valid identifier")
         end
         if (iszero(i) && maskzero) || (i & maskother) != 0
-            throw(ArgumentError("values for BitFlag $typename are not unique"))
+            _throw_error(typename, s, "value is not unique")
         end
-        push!(namemap, (i,s))
+        push!(namemap, (i, sym))
         push!(values, i)
-        if s in seen
-            throw(ArgumentError("name \"$s\" in BitFlag $typename is not unique"))
+        if sym in seen
+            _throw_error(typename, s, "name is not unique")
         end
-        push!(seen, s)
+        push!(seen, sym)
         if iszero(i)
             maskzero = true
         else
@@ -235,7 +242,7 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
         Base.@__doc__(primitive type $etypename <: BitFlag{$ebasetype} $(8sizeof(basetype)) end)
         function $etypename(x::Integer)
             $(membershiptest(:x, (maskzero,maskother))) ||
-                bitflag_argument_error($(Expr(:quote, typename)), x)
+                _argument_error($(Expr(:quote, typename)), x)
             return bitcast($etypename, convert($ebasetype, x))
         end
         BitFlags.namemap(::Type{$etypename}) = $(esc(namemap))

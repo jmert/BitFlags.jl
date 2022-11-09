@@ -94,30 +94,29 @@ end
 
     @test_throws ArgumentError("no arguments given for BitFlag Foo"
                               ) @macrocall(@bitflag Foo)
-    @test_throws ArgumentError("invalid base type for BitFlag Foo, "
-                               * "::Float64; base type must be an unsigned "
-                               * "integer primitive type"
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: Foo::Float64; "
+                               * "base type must be a bitstype unsigned integer"
                               ) @macrocall(@bitflag Foo::Float64 x=1.)
 
     # Require uniqueness
-    @test_throws ArgumentError("values for BitFlag Foo are not unique"
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: y = 1; value is not unique"
                               ) @macrocall(@bitflag Foo x=1 y=1)
-    @test_throws ArgumentError("values for BitFlag Foo are not unique"
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: y = 0; value is not unique"
                               ) @macrocall(@bitflag Foo x=0 y=0)
 
     # Explicit values must be powers of two
-    @test_throws ArgumentError("invalid value for BitFlag Foo, _three = 3; "
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: _three = 3; "
                                * "values must be a positive power of 2"
                               ) @macrocall(@bitflag Foo _three = 3)
 
     # Values must be integers
-    @test_throws ArgumentError("invalid value for BitFlag Foo, _zero = \"zero\"; "
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: _zero = \"zero\"; "
                                * "values must be unsigned integers"
                               ) @macrocall(@bitflag Foo _zero="zero")
-    @test_throws ArgumentError("invalid value for BitFlag Foo, _zero = '0'; "
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: _zero = '0'; "
                                * "values must be unsigned integers"
                               ) @macrocall(@bitflag Foo _zero='0')
-    @test_throws ArgumentError("invalid value for BitFlag Foo, _zero = 0.5; "
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: _zero = 0.5; "
                                * "values must be unsigned integers"
                               ) @macrocall(@bitflag Foo _zero=0.5)
 
