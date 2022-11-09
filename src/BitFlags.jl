@@ -83,9 +83,9 @@ function Base.show(io::IO, m::MIME"text/plain", t::Type{<:BitFlag})
         print(io, "BitFlag ")
         Base.show_datatype(io, t)
         print(io, ":")
-        for x in instances(t)
-            print(io, "\n", Symbol(x), " = ")
-            show(io, Integer(x))
+        for (i, sym) in namemap(t)
+            print(io, "\n", sym, " = ")
+            show(io, Integer(i))
         end
     else
         invoke(show, Tuple{IO, typeof(m), Type}, io, m, t)
