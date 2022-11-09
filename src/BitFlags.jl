@@ -5,6 +5,8 @@
 module BitFlags
 
 import Core.Intrinsics.bitcast
+import Base.Meta.isexpr
+
 export BitFlag, @bitflag
 
 function namemap end
@@ -163,13 +165,13 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
     end
     basetype = UInt32
     typename = T
-    if isa(T, Expr) && T.head === :(::) && length(T.args) == 2 && isa(T.args[1], Symbol)
+    if isexpr(T, :(::), 2) && T.args[1] isa Symbol
         typename = T.args[1]
         basetype = Core.eval(__module__, T.args[2])
-        if !isa(basetype, DataType) || !(basetype <: Unsigned) || !isbitstype(basetype)
+        if !(basetype isa DataType) || !(basetype <: Unsigned) || !isbitstype(basetype)
             _throw_error(typename, T, "base type must be a bitstype unsigned integer")
         end
-    elseif !isa(T, Symbol)
+    elseif !(T isa Symbol)
         _throw_error(typename, T)
     end
     values = Vector{basetype}()
@@ -180,21 +182,19 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
     i = oneunit(basetype)
     two = oneunit(basetype) + oneunit(basetype)
 
-    if length(syms) == 1 && syms[1] isa Expr && syms[1].head === :block
+    if length(syms) == 1 && isexpr(syms[1], :block)
         syms = syms[1].args
     end
     for s in syms
         s isa LineNumberNode && continue
-        if isa(s, Symbol)
+        if s isa Symbol
             if (i == typemin(basetype)) && (maskother & typemax(basetype) != 0)
                 throw(ArgumentError("overflow in value \"$s\" of BitFlag $typename"))
             end
             sym = s
-        elseif isa(s, Expr) &&
-               (s.head === :(=) || s.head === :kw) &&
-               length(s.args) == 2 && isa(s.args[1], Symbol)
+        elseif isexpr(s, (:(=), :kw), 2) && s.args[1] isa Symbol
             i = Core.eval(__module__, s.args[2]) # allow exprs, e.g. uint128"1"
-            if !isa(i, Integer)
+            if !(i isa Integer)
                 _throw_error(typename, s, "values must be unsigned integers")
             end
             if !iszero(i) && !ispow2(i)
@@ -256,10 +256,8 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
             Base.instances(::Type{$etypename}) = insts
         end
     end
-    if isa(typename, Symbol)
-        for (i, sym) in namemap
-            push!(blk.args, :(const $(esc(sym)) = $etypename($i)))
-        end
+    for (i, sym) in namemap
+        push!(blk.args, :(const $(esc(sym)) = $etypename($i)))
     end
     push!(blk.args, :nothing)
     blk.head = :toplevel
