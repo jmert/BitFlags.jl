@@ -227,28 +227,31 @@ macro bitflag(T::Union{Symbol,Expr}, syms...)
     order = sortperm([v[1] for v in namemap])
     permute!(namemap, order)
     permute!(values, order)
+
+    etypename = esc(typename)
+    ebasetype = esc(basetype)
     blk = quote
         # bitflag definition
-        Base.@__doc__(primitive type $(esc(typename)) <: BitFlag{$(basetype)} $(sizeof(basetype) * 8) end)
-        function $(esc(typename))(x::Integer)
+        Base.@__doc__(primitive type $etypename <: BitFlag{$ebasetype} $(8sizeof(basetype)) end)
+        function $etypename(x::Integer)
             $(membershiptest(:x, (maskzero,maskother))) ||
                 bitflag_argument_error($(Expr(:quote, typename)), x)
-            return bitcast($(esc(typename)), convert($(basetype), x))
+            return bitcast($etypename, convert($ebasetype, x))
         end
-        BitFlags.namemap(::Type{$(esc(typename))}) = $(esc(namemap))
-        BitFlags.haszero(::Type{$(esc(typename))}) = $(esc(maskzero))
-        Base.typemin(x::Type{$(esc(typename))}) = $(esc(typename))($lo)
-        Base.typemax(x::Type{$(esc(typename))}) = $(esc(typename))($hi)
-        let flag_hash = hash($(esc(typename)))
-            Base.hash(x::$(esc(typename)), h::UInt) = hash(flag_hash, hash(Integer(x), h))
+        BitFlags.namemap(::Type{$etypename}) = $(esc(namemap))
+        BitFlags.haszero(::Type{$etypename}) = $maskzero
+        Base.typemin(x::Type{$etypename}) = $etypename($lo)
+        Base.typemax(x::Type{$etypename}) = $etypename($hi)
+        let flag_hash = hash($etypename)
+            Base.hash(x::$etypename, h::UInt) = hash(flag_hash, hash(Integer(x), h))
         end
-        let insts = (Any[$(esc(typename))(v) for v in $(values)]...,)
-            Base.instances(::Type{$(esc(typename))}) = insts
+        let insts = (Any[$etypename(v) for v in $(values)]...,)
+            Base.instances(::Type{$etypename}) = insts
         end
     end
     if isa(typename, Symbol)
         for (i, sym) in namemap
-            push!(blk.args, :(const $(esc(sym)) = $(esc(typename))($i)))
+            push!(blk.args, :(const $(esc(sym)) = $etypename($i)))
         end
     end
     push!(blk.args, :nothing)
