@@ -160,6 +160,10 @@ julia> instances(Items)
 ```
 """
 macro bitflag(T::Union{Symbol,Expr}, syms...)
+    return _bitflag(__module__, T, Any[syms...])
+end
+
+function _bitflag(__module__::Module, T::Union{Symbol, Expr}, syms::Vector{Any})
     if isempty(syms)
         throw(ArgumentError("no arguments given for BitFlag $T"))
     end
