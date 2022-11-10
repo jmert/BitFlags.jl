@@ -94,17 +94,6 @@ function Base.show(io::IO, m::MIME"text/plain", t::Type{<:BitFlag})
     end
 end
 
-# generate code to test whether expr is in the given set of values
-function membershiptest(expr, zmask)
-    maskzero, maskother = zmask
-    zz = zero(maskother)
-    if maskzero == true
-        :(($expr == $zz) || ($expr & $maskother != $zz))
-    else
-        :($expr & $maskother != $zz)
-    end
-end
-
 @noinline function _argument_error(typename, x)
     throw(ArgumentError("invalid value for BitFlag $typename: $x"))
 end
@@ -242,6 +231,10 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
         i = iszero(i) ? oneunit(i) : two*i
     end
 
+    membershiptest = let zz = zero(basetype)
+        maskzero ? :(z & $maskother !== $zz || z === $zz) : :(z & $maskother !== $zz)
+    end
+
     order = sortperm(values)
     permute!(names, order)
     permute!(values, order)
@@ -264,9 +257,9 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
         # bitflag definition
         Base.@__doc__(primitive type $etypename <: BitFlag{$ebasetype} $(8sizeof(basetype)) end)
         function $etypename(x::Integer)
-            $(membershiptest(:x, (maskzero,maskother))) ||
-                _argument_error($(Expr(:quote, typename)), x)
-            return bitcast($etypename, convert($ebasetype, x))
+            z = convert($ebasetype, x)
+            $membershiptest || _argument_error($(Expr(:quote, typename)), x)
+            return bitcast($etypename, z)
         end
         BitFlags.namemap(::Type{$etypename}) = $(esc(namemap))
         BitFlags.haszero(::Type{$etypename}) = $maskzero
