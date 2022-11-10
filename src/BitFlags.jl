@@ -159,25 +159,35 @@ julia> instances(Items)
 (apple::Items = 0x00000001, fork::Items = 0x00000002, napkin::Items = 0x00000004)
 ```
 """
-macro bitflag(T::Union{Symbol,Expr}, syms...)
-    return _bitflag(__module__, T, Any[syms...])
+macro bitflag(T::Union{Symbol, Expr}, x::Union{Symbol, Expr}...)
+    return _bitflag(__module__, T, Any[x...])
 end
 
-function _bitflag(__module__::Module, T::Union{Symbol, Expr}, syms::Vector{Any})
-    if isempty(syms)
-        throw(ArgumentError("no arguments given for BitFlag $T"))
-    end
-    basetype = UInt32
-    typename = T
-    if isexpr(T, :(::), 2) && T.args[1] isa Symbol
-        typename = T.args[1]
-        basetype = Core.eval(__module__, T.args[2])
-        if !(basetype isa DataType) || !(basetype <: Unsigned) || !isbitstype(basetype)
+function _bitflag(__module__::Module, T::Union{Symbol, Expr}, x::Vector{Any})
+    if T isa Symbol
+        typename = T
+        basetype = UInt32
+    elseif isexpr(T, :(::), 2) && (e = T::Expr; e.args[1] isa Symbol)
+        typename = e.args[1]::Symbol
+        baseexpr = Core.eval(__module__, e.args[2])
+        if !(baseexpr isa DataType) || !(baseexpr <: Unsigned) || !isbitstype(baseexpr)
             _throw_error(typename, T, "base type must be a bitstype unsigned integer")
         end
-    elseif !(T isa Symbol)
+        basetype = baseexpr::Type{<:Unsigned}
+    else
         _throw_error(typename, T)
     end
+    if isempty(x)
+        throw(ArgumentError("no arguments given for BitFlag $typename"))
+    elseif length(x) == 1 && isexpr(x[1], :block)
+        syms = (x[1]::Expr).args
+    else
+        syms = x
+    end
+    return _bitflag_impl(__module__, typename, basetype, syms)
+end
+
+function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Unsigned}, syms::Vector{Any})
     values = Vector{basetype}()
     seen = Set{Symbol}()
     namemap = Vector{Tuple{basetype,Symbol}}()
@@ -186,9 +196,6 @@ function _bitflag(__module__::Module, T::Union{Symbol, Expr}, syms::Vector{Any})
     i = oneunit(basetype)
     two = oneunit(basetype) + oneunit(basetype)
 
-    if length(syms) == 1 && isexpr(syms[1], :block)
-        syms = syms[1].args
-    end
     for s in syms
         s isa LineNumberNode && continue
         if s isa Symbol
