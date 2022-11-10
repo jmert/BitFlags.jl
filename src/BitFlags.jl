@@ -164,7 +164,7 @@ function _bitflag(__module__::Module, T::Union{Symbol, Expr}, x::Vector{Any})
         end
         basetype = baseexpr::Type{<:Unsigned}
     else
-        _throw_error(typename, T)
+        _throw_error(T, "bad expression head")
     end
     if isempty(x)
         throw(ArgumentError("no arguments given for BitFlag $typename"))

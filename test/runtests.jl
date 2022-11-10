@@ -94,6 +94,8 @@ end
 
     @test_throws ArgumentError("no arguments given for BitFlag Foo"
                               ) @macrocall(@bitflag Foo)
+    @test_throws ArgumentError("invalid argument for BitFlag Foo isa UInt32: bad expression head"
+                              ) @macrocall(@bitflag Foo isa UInt32)
     @test_throws ArgumentError("invalid argument for BitFlag Foo: Foo::Float64; "
                                * "base type must be a bitstype unsigned integer"
                               ) @macrocall(@bitflag Foo::Float64 x=1.)
@@ -103,6 +105,8 @@ end
                               ) @macrocall(@bitflag Foo x=1 y=1)
     @test_throws ArgumentError("invalid argument for BitFlag Foo: y = 0; value is not unique"
                               ) @macrocall(@bitflag Foo x=0 y=0)
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: x; name is not unique"
+                              ) @macrocall(@bitflag Foo x=0 x)
 
     # Explicit values must be powers of two
     @test_throws ArgumentError("invalid argument for BitFlag Foo: _three = 3; "
@@ -129,6 +133,9 @@ end
                               ) @macrocall(@bitflag Foo x ? 1 : 2)
     @test_throws ArgumentError("invalid argument for BitFlag Foo: 1 = 2"
                               ) @macrocall(@bitflag Foo 1=2)
+    @test_throws ArgumentError("invalid argument for BitFlag Foo: #1; "
+                               * "not a valid identifier"
+                              ) @eval @macrocall(@bitflag Foo $(Symbol("#1")))
 
     # Disallow value overflow
     @test_throws ArgumentError("overflow in value \"y\" of BitFlag Foo"
