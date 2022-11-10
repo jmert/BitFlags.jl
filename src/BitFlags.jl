@@ -25,6 +25,8 @@ Base.isless(x::T, y::T) where {T<:BitFlag} = isless(basetype(T)(x), basetype(T)(
 Base.:|(x::T, y::T) where {T<:BitFlag} = T(Integer(x) | Integer(y))
 Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 
+Base.broadcastable(x::BitFlag) = Ref(x)
+
 function Base.print(io::IO, x::T) where T<:BitFlag
     compact = get(io, :compact, false)::Bool
     xi = Integer(x)
