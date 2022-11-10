@@ -202,21 +202,20 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
             if (i == typemin(basetype)) && (maskother & typemax(basetype) != 0)
                 throw(ArgumentError("overflow in value \"$s\" of BitFlag $typename"))
             end
-            sym = s
-        elseif isexpr(s, (:(=), :kw), 2) && s.args[1] isa Symbol
-            i = Core.eval(__module__, s.args[2]) # allow exprs, e.g. uint128"1"
-            if !(i isa Integer)
+            sym = s::Symbol
+        elseif isexpr(s, (:(=), :kw), 2) && (e = s::Expr; e.args[1] isa Symbol)
+            sym = e.args[1]::Symbol
+            ei = Core.eval(__module__, e.args[2]) # allow exprs, e.g. uint128"1"
+            if !(ei isa Integer)
                 _throw_error(typename, s, "values must be unsigned integers")
             end
+            i = convert(basetype, ei)::basetype
             if !iszero(i) && !ispow2(i)
                 _throw_error(typename, s, "values must be a positive power of 2")
             end
-            i = convert(basetype, i)
-            sym = s.args[1]
         else
             _throw_error(typename, s)
         end
-        sym = sym::Symbol
         if !Base.isidentifier(sym)
             _throw_error(typename, s, "not a valid identifier")
         end
