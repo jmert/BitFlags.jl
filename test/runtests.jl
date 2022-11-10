@@ -66,6 +66,9 @@ end
     # Hashing
     @test Int(flag2a) == Int(flag3a)    # same numerical value, but
     @test hash(flag2a) != hash(flag3a)  # unique hashes as BitFlag
+
+    # Broadcasting
+    @test [flag1a, flag1b] .| flag1c == [flag1a | flag1c, flag1b | flag1c]
 #end
 
 #@testset "Type properties" begin
