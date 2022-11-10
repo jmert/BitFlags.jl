@@ -188,9 +188,9 @@ function _bitflag(__module__::Module, T::Union{Symbol, Expr}, x::Vector{Any})
 end
 
 function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Unsigned}, syms::Vector{Any})
+    names = Vector{Symbol}()
     values = Vector{basetype}()
     seen = Set{Symbol}()
-    namemap = Vector{Tuple{basetype,Symbol}}()
     lo = hi = zero(basetype)
     maskzero, maskother = false, zero(basetype)
     i = oneunit(basetype)
@@ -222,12 +222,12 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
         if (iszero(i) && maskzero) || (i & maskother) != 0
             _throw_error(typename, s, "value is not unique")
         end
-        push!(namemap, (i, sym))
-        push!(values, i)
         if sym in seen
             _throw_error(typename, s, "name is not unique")
         end
         push!(seen, sym)
+        push!(names, sym)
+        push!(values, i)
         if iszero(i)
             maskzero = true
         else
@@ -241,12 +241,25 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
         end
         i = iszero(i) ? oneunit(i) : two*i
     end
-    order = sortperm([v[1] for v in namemap])
-    permute!(namemap, order)
+
+    order = sortperm(values)
+    permute!(names, order)
     permute!(values, order)
 
     etypename = esc(typename)
     ebasetype = esc(basetype)
+
+    n = length(names)
+    namemap = Vector{Tuple{basetype, Symbol}}(undef, n)
+    instances = Vector{Expr}(undef, n)
+    flagconsts = Vector{Expr}(undef, n)
+    @inbounds for ii in 1:length(names)
+        sym, val = names[ii], values[ii]
+        namemap[ii] = (val, sym)
+        instances[ii] = :(bitcast($etypename, $val))
+        flagconsts[ii] = :(const $(esc(sym)) = bitcast($etypename, $val))
+    end
+
     blk = quote
         # bitflag definition
         Base.@__doc__(primitive type $etypename <: BitFlag{$ebasetype} $(8sizeof(basetype)) end)
@@ -262,14 +275,10 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
         let flag_hash = hash($etypename)
             Base.hash(x::$etypename, h::UInt) = hash(flag_hash, hash(Integer(x), h))
         end
-        let insts = (Any[$etypename(v) for v in $(values)]...,)
-            Base.instances(::Type{$etypename}) = insts
-        end
+        Base.instances(::Type{$etypename}) = ($(instances...),)
+        $(flagconsts...)
+        nothing
     end
-    for (i, sym) in namemap
-        push!(blk.args, :(const $(esc(sym)) = $etypename($i)))
-    end
-    push!(blk.args, :nothing)
     blk.head = :toplevel
     return blk
 end
