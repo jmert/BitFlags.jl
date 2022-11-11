@@ -50,7 +50,7 @@ function Base.print(io::IO, x::T) where T<:BitFlag
     multi = (haszero(T) ? !iszero(xi) : true) && !compact && !ispow2(xi)
     first = true
     sep = compact ? "|" : " | "
-    for (i, sym) in Iterators.reverse(namemap(T))
+    for (sym, i) in Iterators.reverse(pairs(namemap(T)))
         if (first && iszero(i) && iszero(xi)) || !iszero(xi & i)
             if first
                 multi && print(io, "(")
@@ -87,7 +87,7 @@ function Base.show(io::IO, m::MIME"text/plain", t::Type{<:BitFlag})
         print(io, "BitFlag ")
         Base.show_datatype(io, t)
         print(io, ":")
-        for (i, sym) in namemap(t)
+        for (sym, i) in pairs(namemap(t))
             print(io, "\n", sym, " = ")
             show(io, Integer(i))
         end
@@ -245,15 +245,14 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
     ebasetype = esc(basetype)
 
     n = length(names)
-    namemap = Vector{Tuple{basetype, Symbol}}(undef, n)
     instances = Vector{Expr}(undef, n)
     flagconsts = Vector{Expr}(undef, n)
     @inbounds for ii in 1:length(names)
         sym, val = names[ii], values[ii]
-        namemap[ii] = (val, sym)
         instances[ii] = :(bitcast($etypename, $val))
         flagconsts[ii] = :(const $(esc(sym)) = bitcast($etypename, $val))
     end
+    namemap = NamedTuple{(names...,)}((values...,))
 
     blk = quote
         # bitflag definition
