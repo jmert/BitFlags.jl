@@ -69,6 +69,22 @@ end
 
     # Broadcasting
     @test [flag1a, flag1b] .| flag1c == [flag1a | flag1c, flag1b | flag1c]
+
+    # ccall conversion
+    @bitflag CFlag1::UInt64 begin
+        cflag1_small = 1
+        cflag1_large = UInt64(1) << 63
+    end
+    flag_nonzero(x::Integer) = Cint(!iszero(x))
+    cflag_nonzero_u64 = @cfunction(flag_nonzero, Cint, (UInt64,))
+    cflag_nonzero_u32 = @cfunction(flag_nonzero, Cint, (UInt32,))
+    cflag_nonzero_i32 = @cfunction(flag_nonzero, Cint, (Int32,))
+    @test ccall(cflag_nonzero_u64, Cint, (UInt64,), cflag1_small) == 1
+    @test ccall(cflag_nonzero_u32, Cint, (UInt32,), cflag1_small) == 1
+    @test ccall(cflag_nonzero_i32, Cint, (Int32,), cflag1_small) == 1
+    @test ccall(cflag_nonzero_u64, Cint, (UInt64,), cflag1_large) == 1
+    @test_throws InexactError ccall(cflag_nonzero_u32, Cint, (UInt32,), cflag1_large)
+    @test_throws InexactError ccall(cflag_nonzero_i32, Cint, (Int32,), cflag1_large)
 #end
 
 #@testset "Type properties" begin
