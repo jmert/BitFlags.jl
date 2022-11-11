@@ -93,6 +93,33 @@ end
     @test Integer(flag7b) === UInt8(2)
 #end
 
+#@testset "Internal definitions" begin
+    # Underlying integer types
+    @test BitFlags.basetype(Flag5) === UInt32
+    @test BitFlags.basetype(Flag6) === UInt8
+
+    # Whether flag has an explicit zero
+    @test !BitFlags.haszero(Flag3)
+    @test BitFlags.haszero(Flag4)
+
+    # Key-Value mapping
+    @test BitFlags.namemap(Flag5) isa NamedTuple{(:flag5a, :flag5b), NTuple{2, UInt32}}
+    @test BitFlags.namemap(Flag6) isa NamedTuple{(:flag6a, :flag6b, :flag6c), NTuple{3, UInt8}}
+    # Ensure the mapping can be used in a type-inferrable way
+    function isset_nt(x::B) where {T, B <: BitFlag{T}}
+        nm = BitFlags.namemap(B)
+        K, V = keys(nm), values(nm)
+        tf = (BitFlags.haszero(B) && iszero(T(x))) ? iszero.(V) : (!iszero).(V .& T.(x))
+        return NamedTuple{K}(tf)
+    end
+    @test @inferred isset_nt(flag3a) == (; flag3a = true, flag3b = false, flag3c = false)
+    @test @inferred isset_nt(flag3b) == (; flag3a = false, flag3b = true, flag3c = false)
+    @test @inferred isset_nt(flag3b | flag3c) == (; flag3a = false, flag3b = true, flag3c = true)
+    @test @inferred isset_nt(flag4a) == (; flag4a = true, flag4b = false, flag4c = false)
+    @test @inferred isset_nt(flag4b) == (; flag4a = false, flag4b = true, flag4c = false)
+    @test @inferred isset_nt(flag4b | flag4c) == (; flag4a = false, flag4b = true, flag4c = true)
+#end
+
 #@testset "Error conditions" begin
 
     @test_throws ArgumentError("no arguments given for BitFlag Foo"
