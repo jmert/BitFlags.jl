@@ -66,6 +66,11 @@ end
     # Hashing
     @test Int(flag2a) == Int(flag3a)    # same numerical value, but
     @test hash(flag2a) != hash(flag3a)  # unique hashes as BitFlag
+    @test which(hash, (Flag1, UInt)).sig != Tuple{typeof(hash), Flag1, UInt}
+    struct NonstandardBitFlag <: BitFlags.BitFlag{UInt8} end
+    let x = NonstandardBitFlag(), h = zero(UInt)
+        @test hash(x, h) == invoke(hash, Tuple{Any, UInt}, x, h)
+    end
 
     # Broadcasting
     @test [flag1a, flag1b] .| flag1c == [flag1a | flag1c, flag1b | flag1c]
