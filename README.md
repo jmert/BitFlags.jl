@@ -64,6 +64,43 @@ Stacktrace:
 ...
 ```
 
+In the above examples, both the bit flag type and member instances are added to
+the surrounding scope.
+If some members have common or conflicting names — or if scoped names are
+simply desired on principle — the `@bitflagx` macro can be used instead.
+This variation supports the same features and syntax as `@bitflag` (with
+respect to choosing the base integer type, inline versus block definitions,
+and setting particular flag values), but the definitions are instead placed
+within a [bare] module, avoiding adding anything but the module name to the
+surrounding scope.
+
+For example, the following avoids shadowing the `sin` function:
+```julia
+julia> @bitflagx TrigFunctions sin cos tan csc sec cot
+
+julia> TrigFunctions.sin
+sin::TrigFunctions.T = 0x00000001
+
+julia> sin(π)
+0.0
+
+julia> print(typeof(TrigFunctions.sin))
+Main.TrigFunctions.T
+```
+Because the module is named `TrigFunction`, the generated type must have
+a different name.
+By default, the name of the type is `T`, but it may be overridden by choosing
+using the keyword option `T = new_name` as the first argument:
+```julia
+julia> @bitflag T=type HyperbolicTrigFunctions sinh cosh tanh csch sech coth
+
+julia> HyperbolicTrigFunctions.tanh
+tanh::HyperbolicTrigFunctions.type = 0x00000004
+
+julia> print(typeof(HyperbolicTrigFunctions.tanh))
+Main.HyperbolicTrigFunctions.type
+```
+
 ## Printing
 
 Each flag value is then printed with contextual information which is more

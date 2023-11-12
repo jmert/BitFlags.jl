@@ -286,3 +286,88 @@ end
     end
 #end
 
+#@testset "Scoped bit flags" begin
+    # Individual feature tests are less stringent since most of the generated code is
+    # the same as the extensively tested unscoped variety. Therefore, only do basic
+    # functionality tests, and then test for properties specific to the scoped definition.
+
+    # Inline definition
+    @bitflagx SFlag1 flag1a flag1b flag1c
+    @test SFlag1.T <: BitFlags.BitFlag
+    @test Int(SFlag1.flag1a) == 1
+    @test flag1a !== SFlag1.flag1a  # new value is scoped and distinct from unscoped name
+
+    # Block definition
+    @bitflagx SFlag2 begin
+        flag2a
+        flag2b
+        flag2c
+    end
+    @test SFlag2.T <: BitFlags.BitFlag
+    @test Int(SFlag2.flag2a) == 1
+    @test flag2a !== SFlag2.flag2a  # new value is scoped and distinct from unscoped name
+
+    # Inline definition with explicit type name
+    @bitflagx T=U SFlag3 S=2 T
+    @test SFlag3.U <: BitFlags.BitFlag
+    @test SFlag3.T isa SFlag3.U
+    @test Int(SFlag3.T) == 4
+
+    # Block definition with explicit type name
+    @bitflagx T=U SFlag4 begin
+        S = 2
+        T
+    end
+    @test SFlag4.U <: BitFlags.BitFlag
+    @test SFlag4.T isa SFlag4.U
+    @test Int(SFlag4.T) == 4
+
+    # Definition with explicit integer type
+    @bitflagx SFlag5::UInt8 flag1
+    @test typeof(Integer(SFlag5.flag1)) === UInt8
+
+    # Definition with both explicit integer type and type name
+    @bitflagx T=_T SFlag6::UInt8 flag1
+    @test SFlag6._T <: BitFlags.BitFlag
+    @test typeof(Integer(SFlag6.flag1)) === UInt8
+
+    # Documentation
+    """My Docstring""" @bitflagx SDocFlag1 docflag
+    @test string(@doc(SDocFlag1)) == "My Docstring\n"
+    @doc raw"""Raw Docstring""" @bitflagx SDocFlag2 docflag
+    @test string(@doc(SDocFlag2)) == "Raw Docstring\n"
+
+    # Error conditions
+    #   Too few arguments
+    @test_throws ArgumentError("bad macro call: @bitflagx A = B"
+                              ) @macrocall(@bitflagx A=B)
+    #   Optional argument must be `T = $somesymbol`
+    @test_throws ArgumentError("bad macro call: @bitflagx A = B Foo flag"
+                              ) @macrocall(@bitflagx A=B Foo flag)
+    @test_throws ArgumentError("bad macro call: @bitflagx T = 1 Foo flag"
+                              ) @macrocall(@bitflagx T=1 Foo flag)
+
+    # Printing
+    @bitflagx SFilePerms::UInt8 NONE=0 READ=4 WRITE=2 EXEC=1
+    module ScopedSubModule
+        using ..BitFlags
+        @bitflagx SBits::UInt8 BIT_ONE BIT_TWO BIT_FOUR BIT_EIGHT
+    end
+
+    @test string(SFilePerms.NONE) == "NONE"
+    @test string(ScopedSubModule.SBits.BIT_ONE) == "BIT_ONE"
+    @test repr("text/plain", SFilePerms.T) ==
+        """BitFlag Main.SFilePerms.T:
+           NONE = 0x00
+           EXEC = 0x01
+           WRITE = 0x02
+           READ = 0x04"""
+    @test repr("text/plain", ScopedSubModule.SBits.T) ==
+        """BitFlag Main.ScopedSubModule.SBits.T:
+           BIT_ONE = 0x01
+           BIT_TWO = 0x02
+           BIT_FOUR = 0x04
+           BIT_EIGHT = 0x08"""
+    @test repr(SFilePerms.EXEC) == "EXEC::SFilePerms.T = 0x01"
+    @test repr(ScopedSubModule.SBits.BIT_ONE) == "BIT_ONE::Main.ScopedSubModule.SBits.T = 0x01"
+#end

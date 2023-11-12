@@ -7,7 +7,7 @@ module BitFlags
 import Core.Intrinsics.bitcast
 import Base.Meta.isexpr
 
-export BitFlag, @bitflag
+export BitFlag, @bitflag, @bitflagx
 
 function namemap end
 function haszero end
@@ -78,9 +78,30 @@ function Base.show(io::IO, x::BitFlag)
         print(io, x)
     else
         print(io, x, "::")
-        # explicitly setting :compact => false prints the type with its
-        # "contextual path", i.e. MyFlag (for Main.MyFlag) or Main.SubModule.OtherFlags
-        show(IOContext(io, :compact => false), typeof(x))
+
+        T = typeof(x)
+        Tdef = parentmodule(T)
+        from = get(io, :module, @static isdefined(Base, :active_module) ? Base.active_module() : Main)
+
+        # Detect a scoped BitFlag inside a baremodule by looking for the implicit import
+        # of Base bindings. For scoped bitflags, we actually care about whether the
+        # module itself is visible instead of the type.
+        isscoped = !isdefined(Tdef, :Base)
+        sym = nameof(!isscoped ? T : Tdef)
+        refmod = !isscoped ? Tdef : parentmodule(Tdef)
+        if from === nothing || !Base.isvisible(sym, refmod, from)
+            if !isscoped
+                print(io, refmod, ".", sym)
+            else
+                print(io, Tdef, ".", nameof(T))
+            end
+        else
+            if !isscoped
+                print(io, sym)
+            else
+                print(io, nameof(Tdef), ".", nameof(T))
+            end
+        end
         print(io, " = ")
         show(io, Integer(x))
     end
@@ -103,7 +124,12 @@ end
     throw(ArgumentError("invalid value for BitFlag $typename: $x"))
 end
 
-@noinline function _throw_error(typename, s, msg = nothing)
+@noinline function _throw_macro_error(macroname, args)
+    errmsg = "bad macro call: $(Expr(:macrocall, Symbol(macroname), nothing, args...))"
+    throw(ArgumentError(errmsg))
+end
+
+@noinline function _throw_named_error(typename, s, msg = nothing)
     errmsg = "invalid argument for BitFlag $typename: $s"
     if msg !== nothing
         errmsg *= "; " * msg
@@ -122,14 +148,14 @@ Create a `BitFlag{BaseType}` subtype with name `BitFlagName` and flag member val
 ```jldoctest itemflags
 julia> @bitflag Items apple=1 fork=2 napkin=4
 
-julia> f(x::Items) = "I'm an Item with value: \$x"
+julia> f(x::Items) = "I'm a flag with value: \$x"
 f (generic function with 1 method)
 
 julia> f(apple)
-"I'm an Item with value: apple"
+"I'm a flag with value: apple"
 
 julia> f(apple | fork)
-"I'm an Item with value: apple | fork"
+"I'm a flag with value: (apple | fork)"
 ```
 
 Values can also be specified inside a `begin` block, e.g.
@@ -154,34 +180,78 @@ julia> instances(Items)
 ```
 """
 macro bitflag(T::Union{Symbol, Expr}, x::Union{Symbol, Expr}...)
-    return _bitflag(__module__, T, Any[x...])
+    flagname, basetype = _parse_name(__module__, T)
+    return _bitflag(__module__, nothing, flagname, basetype, Any[x...])
 end
 
-function _bitflag(__module__::Module, T::Union{Symbol, Expr}, x::Vector{Any})
-    if T isa Symbol
-        typename = T
+"""
+    @bitflagx [T=FlagTypeName] BitFlagName[::BaseType] value1[=x] value2[=y]
+
+Like [`@bitflag`](@ref) but instead scopes the new type `FlagTypeName` (named `T` if not
+overridden via the first optional argument) and member constants within a module named
+`BitFlagName`.
+
+# Examples
+```jldoctest scopedflags
+julia> @bitflagx ScopedItems apple=1 fork=2 napkin=4
+
+julia> f(x::ScopedItems.T) = "I'm a scoped flag with value: \$x"
+f (generic function with 1 method
+
+julia> f(ScopedItems.apple | ScopedItems.fork)
+"I'm a scoped flag with value: (fork | apple)"
+"""
+macro bitflagx(arg1::Union{Symbol, Expr}, args::Union{Symbol, Expr}...)
+    self = Symbol("@bitflagx")
+    x = Any[args...]
+    if isexpr(arg1, :(=), 2) && (e = arg1::Expr; (e.args[1] === :T && e.args[2] isa Symbol))
+        # For this case, we need to decompose and swap symbols:
+        # - `FlagTypeName` in `T = FlagTypeName` needs to get moved to the flagexpr argument
+        # - `BitFlagName` in `BitFlagName[::BaseType]` becomes the scope name
+        length(x) < 1 && _throw_macro_error(self, (arg1, args...))
+        arg2 = popfirst!(x)
+        flagname = arg1.args[2]
+        scope, basetype = _parse_name(__module__, arg2)
+        return _bitflag(__module__, scope, flagname, basetype, x)
+    elseif isexpr(arg1, :(::), 2) && (e = arg1::Expr; e.args[1] isa Symbol)
+        scope, basetype = _parse_name(__module__, arg1)
+        return _bitflag(__module__, scope, :T, basetype, x)
+    elseif arg1 isa Symbol
+        return _bitflag(__module__, arg1, :T, UInt32, x)
+    else
+        _throw_macro_error(self, (arg1, args...))
+    end
+end
+
+function _parse_name(__module__::Module, flagexpr::Union{Symbol, Expr})
+    if flagexpr isa Symbol
+        flagname = flagexpr
         basetype = UInt32
-    elseif isexpr(T, :(::), 2) && (e = T::Expr; e.args[1] isa Symbol)
-        typename = e.args[1]::Symbol
+    elseif isexpr(flagexpr, :(::), 2) && (e = flagexpr::Expr; e.args[1] isa Symbol)
+        flagname = e.args[1]::Symbol
         baseexpr = Core.eval(__module__, e.args[2])
         if !(baseexpr isa DataType) || !(baseexpr <: Unsigned) || !isbitstype(baseexpr)
-            _throw_error(typename, T, "base type must be a bitstype unsigned integer")
+            _throw_named_error(flagname, flagexpr, "base type must be a bitstype unsigned integer")
         end
         basetype = baseexpr::Type{<:Unsigned}
     else
-        _throw_error(T, "bad expression head")
+        _throw_named_error(flagexpr, "bad expression head")
     end
-    if isempty(x)
-        throw(ArgumentError("no arguments given for BitFlag $typename"))
-    elseif length(x) == 1 && isexpr(x[1], :block)
+    return (flagname, basetype)
+end
+
+function _bitflag(__module__::Module, scope::Union{Symbol, Nothing}, flagname::Symbol, basetype::Type{<:Unsigned}, x::Vector{Any})
+    isempty(x) && throw(ArgumentError("no arguments given for BitFlag $flagname"))
+    if length(x) == 1 && isexpr(x[1], :block)
         syms = (x[1]::Expr).args
     else
         syms = x
     end
-    return _bitflag_impl(__module__, typename, basetype, syms)
+    return _bitflag_impl(__module__, scope, flagname, basetype, syms)
 end
 
-function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Unsigned}, syms::Vector{Any})
+function _bitflag_impl(__module__::Module, scope::Union{Symbol, Nothing}, typename::Symbol, basetype::Type{<:Unsigned},
+                       syms::Vector{Any})
     names = Vector{Symbol}()
     values = Vector{basetype}()
     seen = Set{Symbol}()
@@ -201,23 +271,23 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
             sym = e.args[1]::Symbol
             ei = Core.eval(__module__, e.args[2]) # allow exprs, e.g. uint128"1"
             if !(ei isa Integer)
-                _throw_error(typename, s, "values must be unsigned integers")
+                _throw_named_error(typename, s, "values must be unsigned integers")
             end
             i = convert(basetype, ei)::basetype
             if !iszero(i) && !ispow2(i)
-                _throw_error(typename, s, "values must be a positive power of 2")
+                _throw_named_error(typename, s, "values must be a positive power of 2")
             end
         else
-            _throw_error(typename, s)
+            _throw_named_error(typename, s)
         end
         if !Base.isidentifier(sym)
-            _throw_error(typename, s, "not a valid identifier")
+            _throw_named_error(typename, s, "not a valid identifier")
         end
         if (iszero(i) && maskzero) || (i & maskother) != 0
-            _throw_error(typename, s, "value is not unique")
+            _throw_named_error(typename, s, "value is not unique")
         end
         if sym in seen
-            _throw_error(typename, s, "name is not unique")
+            _throw_named_error(typename, s, "name is not unique")
         end
         push!(seen, sym)
         push!(names, sym)
@@ -245,7 +315,6 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
     permute!(values, order)
 
     etypename = esc(typename)
-    ebasetype = esc(basetype)
 
     n = length(names)
     instances = Vector{Expr}(undef, n)
@@ -259,9 +328,9 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
 
     blk = quote
         # bitflag definition
-        Base.@__doc__(primitive type $etypename <: BitFlag{$ebasetype} $(8sizeof(basetype)) end)
+        primitive type $etypename <: BitFlag{$basetype} $(8sizeof(basetype)) end
         function $etypename(x::Integer)
-            z = convert($ebasetype, x)
+            z = convert($basetype, x)
             $membershiptest || _argument_error($(Expr(:quote, typename)), x)
             return bitcast($etypename, z)
         end
@@ -274,9 +343,26 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
         end
         Base.instances(::Type{$etypename}) = ($(instances...),)
         $(flagconsts...)
-        nothing
+    end
+
+    if scope isa Symbol
+        escope = esc(scope)
+        blk = quote
+            baremodule $escope
+                $(blk.args...)
+            end
+            Base.@__doc__ $escope
+            nothing
+        end
+    else
+        blk = quote
+            $(blk.args...)
+            Base.@__doc__ $etypename
+            nothing
+        end
     end
     blk.head = :toplevel
+
     return blk
 end
 
