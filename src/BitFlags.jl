@@ -27,6 +27,9 @@ Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 
 Base.broadcastable(x::BitFlag) = Ref(x)
 
+_bitflag_hash(x::BitFlag, h::UInt) = invoke(hash, Tuple{Any, UInt}, x, h)
+Base.hash(x::BitFlag, h::UInt) = _bitflag_hash(x, h)
+
 function Base.print(io::IO, x::T) where T<:BitFlag
     compact = get(io, :compact, false)::Bool
     xi = Integer(x)
@@ -267,7 +270,7 @@ function _bitflag_impl(__module__::Module, typename::Symbol, basetype::Type{<:Un
         Base.typemin(x::Type{$etypename}) = $etypename($lo)
         Base.typemax(x::Type{$etypename}) = $etypename($hi)
         let flag_hash = hash($etypename)
-            Base.hash(x::$etypename, h::UInt) = hash(flag_hash, hash(Integer(x), h))
+            BitFlags._bitflag_hash(x::$etypename, h::UInt) = hash(flag_hash, hash(Integer(x), h))
         end
         Base.instances(::Type{$etypename}) = ($(instances...),)
         $(flagconsts...)
