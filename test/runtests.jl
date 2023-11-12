@@ -87,6 +87,15 @@ end
     @test_throws InexactError ccall(cflag_nonzero_i32, Cint, (Int32,), cflag1_large)
 #end
 
+#@testset "Documentation" begin
+    # docstring literal
+    """My Docstring""" @bitflag DocFlag1 docflag1a
+    @test string(@doc(DocFlag1)) == "My Docstring\n"
+    # docstring macro for non-string literals
+    @doc raw"""Raw Docstring""" @bitflag DocFlag2 docflag2a
+    @test string(@doc(DocFlag2)) == "Raw Docstring\n"
+#end
+
 #@testset "Type properties" begin
     # Default integer typing
     @bitflag Flag5 flag5a flag5b
