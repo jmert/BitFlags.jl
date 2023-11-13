@@ -92,7 +92,7 @@ a different name.
 By default, the name of the type is `T`, but it may be overridden by choosing
 using the keyword option `T = new_name` as the first argument:
 ```julia
-julia> @bitflag T=type HyperbolicTrigFunctions sinh cosh tanh csch sech coth
+julia> @bitflagx T=type HyperbolicTrigFunctions sinh cosh tanh csch sech coth
 
 julia> HyperbolicTrigFunctions.tanh
 tanh::HyperbolicTrigFunctions.type = 0x00000004
