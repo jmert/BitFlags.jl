@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - 'README.md'
       - '.github/workflows/**'
+  workflow_dispatch:
+
 concurrency:
   # Skip intermediate builds: always.
   # Cancel intermediate builds: only if it is a pull request build.
