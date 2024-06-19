@@ -1,6 +1,16 @@
 using BitFlags
 using Test, Serialization
 
+# workaround for https://github.com/JuliaLang/julia/issues/54664
+function extractdoc(doc)
+    # On v1.11 without REPL loaded, the @doc macro returns a Base.Docs.DocStr object;
+    # extract the stored string from the object.
+    doc isa Base.Docs.DocStr && return doc.text[1]
+    # Otherwise, assume we get something like a Markdown.MD object and just turn it into
+    # a string. (Strip trailing newline for consistency with above form.)
+    return strip(string(doc))
+end
+
 macro macrocall(ex)
     @assert Meta.isexpr(ex, :macrocall)
     ex.head = :call
@@ -95,10 +105,10 @@ end
 #@testset "Documentation" begin
     # docstring literal
     """My Docstring""" @bitflag DocFlag1 docflag1a
-    @test string(@doc(DocFlag1)) == "My Docstring\n"
+    @test extractdoc(@doc(DocFlag1)) == "My Docstring"
     # docstring macro for non-string literals
     @doc raw"""Raw Docstring""" @bitflag DocFlag2 docflag2a
-    @test string(@doc(DocFlag2)) == "Raw Docstring\n"
+    @test extractdoc(@doc(DocFlag2)) == "Raw Docstring"
 #end
 
 #@testset "Type properties" begin
@@ -333,9 +343,9 @@ end
 
     # Documentation
     """My Docstring""" @bitflagx SDocFlag1 docflag
-    @test string(@doc(SDocFlag1)) == "My Docstring\n"
+    @test extractdoc(@doc(SDocFlag1)) == "My Docstring"
     @doc raw"""Raw Docstring""" @bitflagx SDocFlag2 docflag
-    @test string(@doc(SDocFlag2)) == "Raw Docstring\n"
+    @test extractdoc(@doc(SDocFlag2)) == "Raw Docstring"
 
     # Error conditions
     #   Too few arguments
