@@ -381,3 +381,9 @@ end
     @test repr(SFilePerms.EXEC) == "EXEC::SFilePerms.T = 0x01"
     @test repr(ScopedSubModule.SBits.BIT_ONE) == "BIT_ONE::Main.ScopedSubModule.SBits.T = 0x01"
 #end
+
+#@testset "Codegen quality checks" begin
+    if isdefined(Test, :detect_closure_boxes)
+        @test length(Test.detect_closure_boxes(BitFlags)) == 0
+    end
+#end
