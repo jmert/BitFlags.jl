@@ -181,7 +181,7 @@ julia> instances(Items)
 """
 macro bitflag(T::Union{Symbol, Expr}, x::Union{Symbol, Expr}...)
     flagname, basetype = _parse_name(__module__, T)
-    return _bitflag(__module__, nothing, flagname, basetype, Any[x...])
+    return _bitflag(__module__, __source__, nothing, flagname, basetype, Any[x...])
 end
 
 """
@@ -212,12 +212,12 @@ macro bitflagx(arg1::Union{Symbol, Expr}, args::Union{Symbol, Expr}...)
         arg2 = popfirst!(x)
         flagname = arg1.args[2]
         scope, basetype = _parse_name(__module__, arg2)
-        return _bitflag(__module__, scope, flagname, basetype, x)
+        return _bitflag(__module__, __source__, scope, flagname, basetype, x)
     elseif isexpr(arg1, :(::), 2) && (e = arg1::Expr; e.args[1] isa Symbol)
         scope, basetype = _parse_name(__module__, arg1)
-        return _bitflag(__module__, scope, :T, basetype, x)
+        return _bitflag(__module__, __source__, scope, :T, basetype, x)
     elseif arg1 isa Symbol
-        return _bitflag(__module__, arg1, :T, UInt32, x)
+        return _bitflag(__module__, __source__, arg1, :T, UInt32, x)
     else
         _throw_macro_error(self, (arg1, args...))
     end
@@ -240,17 +240,17 @@ function _parse_name(__module__::Module, flagexpr::Union{Symbol, Expr})
     return (flagname, basetype)
 end
 
-function _bitflag(__module__::Module, scope::Union{Symbol, Nothing}, flagname::Symbol, basetype::Type{<:Unsigned}, x::Vector{Any})
+function _bitflag(__module__::Module, __source__, scope::Union{Symbol, Nothing}, flagname::Symbol, basetype::Type{<:Unsigned}, x::Vector{Any})
     isempty(x) && throw(ArgumentError("no arguments given for BitFlag $flagname"))
     if length(x) == 1 && isexpr(x[1], :block)
         syms = (x[1]::Expr).args
     else
         syms = x
     end
-    return _bitflag_impl(__module__, scope, flagname, basetype, syms)
+    return _bitflag_impl(__module__, __source__, scope, flagname, basetype, syms)
 end
 
-function _bitflag_impl(__module__::Module, scope::Union{Symbol, Nothing}, typename::Symbol, basetype::Type{<:Unsigned},
+function _bitflag_impl(__module__::Module, __source__, scope::Union{Symbol, Nothing}, typename::Symbol, basetype::Type{<:Unsigned},
                        syms::Vector{Any})
     names = Vector{Symbol}()
     values = Vector{basetype}()
@@ -363,6 +363,9 @@ function _bitflag_impl(__module__::Module, scope::Union{Symbol, Nothing}, typena
     end
     blk.head = :toplevel
 
+    @static if isdefined(Base, :replace_linenums!)
+        blk = Base.replace_linenums!(blk, __source__)
+    end
     return blk
 end
 
