@@ -1,11 +1,15 @@
 using BitFlags
-using Test, Serialization
+using Markdown
+using Serialization
+using Test
 
 # workaround for https://github.com/JuliaLang/julia/issues/54664
 function extractdoc(doc)
     # On v1.11 without REPL loaded, the @doc macro returns a Base.Docs.DocStr object;
     # extract the stored string from the object.
-    doc isa Base.Docs.DocStr && return doc.text[1]
+    if doc isa Base.Docs.DocStr
+        doc = !isnothing(doc.object) ? doc.object : first(doc.text)
+    end
     # Otherwise, assume we get something like a Markdown.MD object and just turn it into
     # a string. (Strip trailing newline for consistency with above form.)
     return strip(string(doc))
@@ -104,11 +108,19 @@ end
 
 #@testset "Documentation" begin
     # docstring literal
-    """My Docstring""" @bitflag DocFlag1 docflag1a
+    """My Docstring""" @bitflag DocFlag1 begin
+        """first flag"""
+        docflag1a
+    end
     @test extractdoc(@doc(DocFlag1)) == "My Docstring"
+    @test extractdoc(@doc(docflag1a)) == "first flag"
     # docstring macro for non-string literals
-    @doc raw"""Raw Docstring""" @bitflag DocFlag2 docflag2a
+    @doc raw"""Raw Docstring""" @bitflag DocFlag2 begin
+        @doc md"""**second flag**"""
+        docflag2a
+    end
     @test extractdoc(@doc(DocFlag2)) == "Raw Docstring"
+    @test extractdoc(@doc(docflag2a)) == "**second flag**"
 #end
 
 #@testset "Type properties" begin

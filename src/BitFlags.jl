@@ -259,9 +259,20 @@ function _bitflag_impl(__module__::Module, __source__, scope::Union{Symbol, Noth
     maskzero, maskother = false, zero(basetype)
     i = oneunit(basetype)
     two = oneunit(basetype) + oneunit(basetype)
+    docs = Dict{Symbol,Expr}()
 
     for s in syms
         s isa LineNumberNode && continue
+        if isexpr(s, :macrocall, 4) && (
+            sa = s.args[1];
+            sa === Symbol("@doc") || sa == GlobalRef(Core, Symbol("@doc"))
+        )
+            doc = s
+            doc.args[3] = Core.eval(__module__, doc.args[3])  # evaluates string macros, e.g. md"doc string"
+            s = s.args[4]
+        else
+            doc = nothing
+        end
         if s isa Symbol
             if (i == typemin(basetype)) && (maskother & typemax(basetype) != 0)
                 throw(ArgumentError("overflow in value \"$s\" of BitFlag $typename"))
@@ -303,6 +314,9 @@ function _bitflag_impl(__module__::Module, __source__, scope::Union{Symbol, Noth
             lo = min(lo, i)
             hi = max(hi, i)
         end
+        if doc !== nothing
+            docs[sym] = doc
+        end
         i = iszero(i) ? oneunit(i) : two*i
     end
 
@@ -322,7 +336,12 @@ function _bitflag_impl(__module__::Module, __source__, scope::Union{Symbol, Noth
     @inbounds for ii in 1:length(names)
         sym, val = names[ii], values[ii]
         instances[ii] = :(bitcast($etypename, $val))
-        flagconsts[ii] = :(const $(esc(sym)) = bitcast($etypename, $val))
+        flagex = :(const $(esc(sym)) = bitcast($etypename, $val))
+        if haskey(docs, sym)
+            docs[sym].args[4] = flagex
+            flagex = docs[sym]
+        end
+        flagconsts[ii] = flagex
     end
     namemap = NamedTuple{(names...,)}((values...,))
 
