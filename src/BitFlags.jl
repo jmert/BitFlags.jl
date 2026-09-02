@@ -22,6 +22,7 @@ Base.write(io::IO, x::BitFlag{T}) where {T} = write(io, T(x))
 Base.read(io::IO, ::Type{T}) where {T<:BitFlag} = T(read(io, basetype(T)))
 
 Base.isless(x::T, y::T) where {T<:BitFlag} = isless(basetype(T)(x), basetype(T)(y))
+Base.iszero(x::T) where {T<:BitFlag} = iszero(Integer(x))
 Base.:|(x::T, y::T) where {T<:BitFlag} = T(Integer(x) | Integer(y))
 Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 

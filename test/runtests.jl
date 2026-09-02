@@ -70,12 +70,19 @@ end
     @test Int(flag4c) == 2
     @test Flag4(0) == flag4a
 
+    # Comparison
+    @test flag1a == flag1a
+    @test flag1a ≤ flag1a
+    @test flag1a < flag1b < flag1c
+    @test flag1c > flag1b > flag1a
+    @test flag1a | flag1b < flag1c
+    @test iszero(flag4a)
+    @test !iszero(flag4b)
+
     # Mask operations
     @test Int(Flag1(7)) == 7
     @test Flag1(7) == flag1a | flag1b | flag1c
     @test Flag1(7) & flag1a == flag1a
-    @test flag1a < flag1b < flag1c
-    @test flag1a | flag1b < flag1c
 
     # Hashing
     @test Int(flag2a) == Int(flag3a)    # same numerical value, but
