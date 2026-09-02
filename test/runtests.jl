@@ -84,6 +84,16 @@ end
     @test Flag1(7) == flag1a | flag1b | flag1c
     @test Flag1(7) & flag1a == flag1a
 
+    # Membership
+    @test flag1a ∈ (flag1a | flag1b)
+    @test flag1a ∉ (flag1b | flag1c)
+    @test flag4b ∈ (flag4b | flag4c)
+    @test (flag2a | flag2b) ∉ (flag2a | flag2c)
+    # zero-flag handling has special cases
+    @test flag4a ∉ (flag4b | flag4c)  # zero on left only...
+    @test flag4a ∈ flag4a             # ...matches zero on right
+    @test reinterpret(Flag1, zero(UInt32)) ∉ reinterpret(Flag1, zero(UInt32))  # but only if BitFlags.haszero(T)
+
     # Hashing
     @test Int(flag2a) == Int(flag3a)    # same numerical value, but
     @test hash(flag2a) != hash(flag3a)  # unique hashes as BitFlag

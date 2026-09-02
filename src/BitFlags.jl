@@ -26,6 +26,11 @@ Base.iszero(x::T) where {T<:BitFlag} = iszero(Integer(x))
 Base.:|(x::T, y::T) where {T<:BitFlag} = T(Integer(x) | Integer(y))
 Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 
+function Base.in(x::T, y::T) where {T<:BitFlag}
+    iszero(x) && return haszero(T) && iszero(y)
+    return Integer(x) & Integer(y) == Integer(x)
+end
+
 Base.broadcastable(x::BitFlag) = Ref(x)
 
 _bitflag_hash(x::BitFlag, h::UInt) = invoke(hash, Tuple{Any, UInt}, x, h)
