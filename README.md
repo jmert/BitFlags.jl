@@ -43,6 +43,9 @@ Combinations can be made using standard binary operations:
 julia> S_BOLD | S_LARGE
 (S_LARGE | S_BOLD)::MyStyle = 0x09
 
+julia> ans ⊻ S_LARGE
+S_BOLD::MyStyle = 0x01
+
 julia> ans & S_ITALIC
 S_NONE::MyStyle = 0x00
 ```

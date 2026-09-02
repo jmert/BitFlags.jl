@@ -70,12 +70,46 @@ end
     @test Int(flag4c) == 2
     @test Flag4(0) == flag4a
 
-    # Mask operations
-    @test Int(Flag1(7)) == 7
-    @test Flag1(7) == flag1a | flag1b | flag1c
-    @test Flag1(7) & flag1a == flag1a
+    # Comparison
+    @test flag1a == flag1a
+    @test flag1a ≤ flag1a
     @test flag1a < flag1b < flag1c
+    @test flag1c > flag1b > flag1a
     @test flag1a | flag1b < flag1c
+    @test iszero(flag4a)
+    @test !iszero(flag4b)
+
+    # Mask operations
+    v = Flag1(7)
+    @test Int(v) == 7
+    @test v == flag1a | flag1b | flag1c
+    @test v & flag1a == flag1a
+    @test v ⊻ flag1a == flag1b | flag1c
+    # AND can construct the all-zeros value without error
+    @test iszero(flag1a & flag1b)
+    # NOT can construct arbitrary bit patterns without error
+    @test ~v == reinterpret(Flag1, ~UInt32(7))
+    # and they can manipulate "invalid" values without loss of information
+    x = reinterpret(Flag1, UInt32(97))
+    @test x & ~flag1a == reinterpret(Flag1, UInt32(96))
+    @test x | flag1b == reinterpret(Flag1, UInt32(99))
+    @test x ⊻ flag1a == reinterpret(Flag1, UInt32(96))
+    @test ~x == reinterpret(Flag1, ~UInt32(97))
+
+    # Membership
+    @test flag1a ∈ (flag1a | flag1b)
+    @test flag1a ∉ (flag1b | flag1c)
+    @test flag4b ∈ (flag4b | flag4c)
+    @test (flag2a | flag2b) ∉ (flag2a | flag2c)
+    # zero-flag handling has special cases
+    @test flag4a ∉ (flag4b | flag4c)  # zero on left only...
+    @test flag4a ∈ flag4a             # ...matches zero on right
+    @test zero(Flag1) ∉ zero(Flag1)  # but only if BitFlags.haszero(T)
+
+    # Initialization
+    @test zero(Flag4) == zero(flag4b) == flag4a
+    @test zeros(Flag4, 2) == fill(flag4a, 2) == reinterpret(Flag4, zeros(UInt32, 2))
+    @test zeros(Flag1, 2) == fill(zero(Flag1), 2) == reinterpret(Flag1, zeros(UInt32, 2))
 
     # Hashing
     @test Int(flag2a) == Int(flag3a)    # same numerical value, but
