@@ -80,9 +80,21 @@ end
     @test !iszero(flag4b)
 
     # Mask operations
-    @test Int(Flag1(7)) == 7
-    @test Flag1(7) == flag1a | flag1b | flag1c
-    @test Flag1(7) & flag1a == flag1a
+    v = Flag1(7)
+    @test Int(v) == 7
+    @test v == flag1a | flag1b | flag1c
+    @test v & flag1a == flag1a
+    @test v ⊻ flag1a == flag1b | flag1c
+    # AND can construct the all-zeros value without error
+    @test iszero(flag1a & flag1b)
+    # NOT can construct arbitrary bit patterns without error
+    @test ~v == reinterpret(Flag1, ~UInt32(7))
+    # and they can manipulate "invalid" values without loss of information
+    x = reinterpret(Flag1, UInt32(97))
+    @test x & ~flag1a == reinterpret(Flag1, UInt32(96))
+    @test x | flag1b == reinterpret(Flag1, UInt32(99))
+    @test x ⊻ flag1a == reinterpret(Flag1, UInt32(96))
+    @test ~x == reinterpret(Flag1, ~UInt32(97))
 
     # Membership
     @test flag1a ∈ (flag1a | flag1b)

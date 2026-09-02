@@ -23,15 +23,17 @@ Base.read(io::IO, ::Type{T}) where {T<:BitFlag} = T(read(io, basetype(T)))
 
 Base.isless(x::T, y::T) where {T<:BitFlag} = isless(basetype(T)(x), basetype(T)(y))
 Base.iszero(x::T) where {T<:BitFlag} = iszero(Integer(x))
-Base.:|(x::T, y::T) where {T<:BitFlag} = T(Integer(x) | Integer(y))
-Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
+Base.:|(x::T, y::T) where {T<:BitFlag} = reinterpret(T, Integer(x) | Integer(y))
+Base.:&(x::T, y::T) where {T<:BitFlag} = reinterpret(T, Integer(x) & Integer(y))
+Base.:⊻(x::T, y::T) where {T<:BitFlag} = reinterpret(T, Integer(x) ⊻ Integer(y))
+Base.:~(x::T) where {T<:BitFlag} = reinterpret(T, ~Integer(x))
 
 Base.zero(::Type{T}) where {T<:BitFlag} = reinterpret(T, zero(basetype(T)))
 Base.zero(x::T) where {T<:BitFlag} = zero(typeof(x))
 
 function Base.in(x::T, y::T) where {T<:BitFlag}
     iszero(x) && return haszero(T) && iszero(y)
-    return Integer(x) & Integer(y) == Integer(x)
+    return x & y == x
 end
 
 Base.broadcastable(x::BitFlag) = Ref(x)
