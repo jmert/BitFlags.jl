@@ -92,7 +92,12 @@ end
     # zero-flag handling has special cases
     @test flag4a ∉ (flag4b | flag4c)  # zero on left only...
     @test flag4a ∈ flag4a             # ...matches zero on right
-    @test reinterpret(Flag1, zero(UInt32)) ∉ reinterpret(Flag1, zero(UInt32))  # but only if BitFlags.haszero(T)
+    @test zero(Flag1) ∉ zero(Flag1)  # but only if BitFlags.haszero(T)
+
+    # Initialization
+    @test zero(Flag4) == zero(flag4b) == flag4a
+    @test zeros(Flag4, 2) == fill(flag4a, 2) == reinterpret(Flag4, zeros(UInt32, 2))
+    @test zeros(Flag1, 2) == fill(zero(Flag1), 2) == reinterpret(Flag1, zeros(UInt32, 2))
 
     # Hashing
     @test Int(flag2a) == Int(flag3a)    # same numerical value, but

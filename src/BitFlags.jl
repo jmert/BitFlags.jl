@@ -26,6 +26,9 @@ Base.iszero(x::T) where {T<:BitFlag} = iszero(Integer(x))
 Base.:|(x::T, y::T) where {T<:BitFlag} = T(Integer(x) | Integer(y))
 Base.:&(x::T, y::T) where {T<:BitFlag} = T(Integer(x) & Integer(y))
 
+Base.zero(::Type{T}) where {T<:BitFlag} = reinterpret(T, zero(basetype(T)))
+Base.zero(x::T) where {T<:BitFlag} = zero(typeof(x))
+
 function Base.in(x::T, y::T) where {T<:BitFlag}
     iszero(x) && return haszero(T) && iszero(y)
     return Integer(x) & Integer(y) == Integer(x)
